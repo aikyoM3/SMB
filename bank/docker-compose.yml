@@ -19,7 +19,8 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   # MySQL Database for Account Service
   mysql-account:
@@ -39,7 +40,8 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   # MySQL Database for Authentication Service
   mysql-auth:
@@ -59,7 +61,8 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   # Axon Server (using axonserver.jar)
   axon-server:
@@ -79,7 +82,7 @@ services:
     environment:
       - AXONSERVER_HOSTNAME=axon-server
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8024/actuator/health || curl -f http://localhost:8024 || exit 1"]
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/8024' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -96,7 +99,7 @@ services:
       - "8761:8761"
     depends_on:
       axon-server:
-        condition: service_healthy
+        condition: service_started
     networks:
       - bank-network
     healthcheck:
@@ -120,7 +123,7 @@ services:
       - ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8089
     depends_on:
       discovery-service:
-        condition: service_healthy
+        condition: service_started
     networks:
       - bank-network
     healthcheck:
@@ -149,9 +152,9 @@ services:
       - EMAIL_SYSTEM=test@bank.com
     depends_on:
       discovery-service:
-        condition: service_healthy
+        condition: service_started
       gateway-service:
-        condition: service_healthy
+        condition: service_started
     networks:
       - bank-network
     healthcheck:
@@ -181,9 +184,9 @@ services:
       - JWT_EXPIRATION=604800000
     depends_on:
       mysql-auth:
-        condition: service_healthy
+        condition: service_started
       discovery-service:
-        condition: service_healthy
+        condition: service_started
     networks:
       - bank-network
     healthcheck:
@@ -214,13 +217,13 @@ services:
       - JWT_EXPIRATION=604800000
     depends_on:
       mysql-customer:
-        condition: service_healthy
+        condition: service_started
       discovery-service:
-        condition: service_healthy
+        condition: service_started
       gateway-service:
-        condition: service_healthy
+        condition: service_started
       notification-service:
-        condition: service_healthy
+        condition: service_started
     networks:
       - bank-network
     healthcheck:
@@ -254,15 +257,15 @@ services:
       - JWT_EXPIRATION=604800000
     depends_on:
       mysql-account:
-        condition: service_healthy
+        condition: service_started
       axon-server:
-        condition: service_healthy
+        condition: service_started
       discovery-service:
-        condition: service_healthy
+        condition: service_started
       gateway-service:
-        condition: service_healthy
+        condition: service_started
       customer-service:
-        condition: service_healthy
+        condition: service_started
     networks:
       - bank-network
     healthcheck:
