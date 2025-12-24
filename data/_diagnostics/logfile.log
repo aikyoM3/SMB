@@ -1,0 +1,5 @@
+2025-12-25 02:51:13.622 |  WARN |                      main | i.m.core.instrument.MeterRegistry        | This Gauge has been already registered (MeterId{name='disk.free', tags=[tag(axonserver=LAPTOP-HRA2FF94),tag(path=D:\)]}), the registration will be ignored. Note that subsequent logs will be logged at debug level.
+2025-12-25 02:51:14.563 |  INFO |                      main | i.a.a.e.c.i.MessagingClusterServer       | Axon Server Cluster Server started on port: 8224 - no SSL
+2025-12-25 02:51:14.743 |  INFO |                      main | io.axoniq.axonserver.grpc.Gateway        | Axon Server Gateway started on port: 8124 - no SSL
+2025-12-25 02:51:14.761 |  INFO |                      main | o.s.b.w.embedded.tomcat.TomcatWebServer  | Tomcat started on port 8024 (http) with context path '/'
+2025-12-25 02:51:14.796 |  INFO |                      main | io.axoniq.axonserver.AxonServer          | Started AxonServer in 20.91 seconds (process running for 21.859)
