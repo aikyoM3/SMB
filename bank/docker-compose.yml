@@ -65,6 +65,7 @@ services:
   axon-server:
     image: axon-server
     container_name: axon-server
+    hostname: axon-server  # <--- ADD THIS LINE
     build:
       context: ..
       dockerfile: ./bank/axon-server/Dockerfile
@@ -121,11 +122,12 @@ services:
     networks:
       - bank-network
     healthcheck:
+      # If curl is missing, use: test: ["CMD-SHELL", "nc -z localhost 8888 || exit 1"]
       test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
+      interval: 15s # Faster checks
+      timeout: 5s
+      retries: 10   # Give Java more time to boot
+      start_period: 60s
 
   # Notification Service
   notification-service:
@@ -177,8 +179,6 @@ services:
       mysql-auth:
         condition: service_healthy
       discovery-service:
-        condition: service_healthy
-      gateway-service:
         condition: service_healthy
     networks:
       - bank-network
@@ -275,18 +275,20 @@ services:
       - "5557:5557"  # Master port
       - "5558:5558"  # Worker port
     volumes:
-      - ./locustfile.py:/locust/locustfile.py
-      - ./requirements-locust.txt:/locust/requirements.txt
-    command: sh -c "pip install -r /locust/requirements.txt && locust -f /locust/locustfile.py --host=http://gateway-service:8888 --web-host=0.0.0.0 --html=/locust/report.html --logfile=/locust/locust.log"
-    depends_on:
-      gateway-service:
-        condition: service_healthy
-      account-service:
-        condition: service_healthy
-      customer-service:
-        condition: service_healthy
-      authentication-service:
-        condition: service_healthy
+      # Map the local file to the path Locust expects inside the container
+      - .:/mnt/locust 
+    entrypoint: sh -c "pip install -r /mnt/locust/requirements-locust.txt && locust -f /mnt/locust/locustfile.py --host=http://gateway-service:8888"
+    # Update the command to point to the mounted directory
+    # command: -f /mnt/locust/locustfile.py --host=http://gateway-service:8888
+    # depends_on:
+    #   gateway-service:
+    #     condition: service_healthy
+    #   account-service:
+    #     condition: service_healthy
+    #   customer-service:
+    #     condition: service_healthy
+    #   authentication-service:
+    #     condition: service_healthy
     networks:
       - bank-network
     environment:
