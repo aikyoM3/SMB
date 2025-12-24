@@ -61,25 +61,28 @@ services:
       timeout: 5s
       retries: 5
 
-  # Axon Server
+  # Axon Server (using axonserver.jar)
   axon-server:
-    image: axoniq/axonserver:latest
+    image: axon-server
     container_name: axon-server
+    build:
+      context: ..
+      dockerfile: ./bank/axon-server/Dockerfile
     ports:
       - "8024:8024"  # HTTP port
       - "8124:8124"  # gRPC port
     volumes:
-      - axon-server-data:/data
-      - axon-server-events:/eventdata
+      - axon-server-data:/app/data
     networks:
       - bank-network
     environment:
       - AXONSERVER_HOSTNAME=axon-server
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8024/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8024/actuator/health || curl -f http://localhost:8024 || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   # Discovery Service (Eureka)
   discovery-service:
@@ -90,14 +93,16 @@ services:
     ports:
       - "8761:8761"
     depends_on:
-      - axon-server
+      axon-server:
+        condition: service_healthy
     networks:
       - bank-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 40s
 
   # Gateway Service
   gateway-service:
@@ -111,14 +116,16 @@ services:
       - DISCOVERY_SERVICE=http://discovery-service:8761/eureka/
       - ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8089
     depends_on:
-      - discovery-service
+      discovery-service:
+        condition: service_healthy
     networks:
       - bank-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 40s
 
   # Notification Service
   notification-service:
@@ -136,15 +143,18 @@ services:
       - MAIL_PASSWORD=
       - EMAIL_SYSTEM=test@bank.com
     depends_on:
-      - discovery-service
-      - gateway-service
+      discovery-service:
+        condition: service_healthy
+      gateway-service:
+        condition: service_healthy
     networks:
       - bank-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8887/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8887/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 40s
 
   # Authentication Service
   authentication-service:
@@ -166,15 +176,18 @@ services:
     depends_on:
       mysql-auth:
         condition: service_healthy
-      - discovery-service
-      - gateway-service
+      discovery-service:
+        condition: service_healthy
+      gateway-service:
+        condition: service_healthy
     networks:
       - bank-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8885/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8885/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 40s
 
   # Customer Service
   customer-service:
@@ -190,22 +203,27 @@ services:
       - MYSQL_PWD=root
       - MYSQL_HOST=mysql-customer
       - MYSQL_PORT=3306
+      - DATABASE=customer_db
       - MYSQL_DATABASE=customer_db
       - JWT_SECRET=AaZzBbCcYyDdXxEeWwFf
       - JWT_EXPIRATION=604800000
     depends_on:
       mysql-customer:
         condition: service_healthy
-      - discovery-service
-      - gateway-service
-      - notification-service
+      discovery-service:
+        condition: service_healthy
+      gateway-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
     networks:
       - bank-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8886/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8886/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 40s
 
   # Account Service
   account-service:
@@ -221,6 +239,7 @@ services:
       - MYSQL_PWD=root
       - MYSQL_HOST=mysql-account
       - MYSQL_PORT=3306
+      - DATABASE=account_db
       - MYSQL_DATABASE=account_db
       - AXON_HOST=axon-server
       - AXON_PORT=8124
@@ -232,16 +251,20 @@ services:
         condition: service_healthy
       axon-server:
         condition: service_healthy
-      - discovery-service
-      - gateway-service
-      - customer-service
+      discovery-service:
+        condition: service_healthy
+      gateway-service:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
     networks:
       - bank-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8884/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8884/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 40s
 
   # Locust for Load Testing
   locust:
@@ -254,14 +277,20 @@ services:
     volumes:
       - ./locustfile.py:/locust/locustfile.py
       - ./requirements-locust.txt:/locust/requirements.txt
-    command: sh -c "pip install -r /locust/requirements.txt && locust -f /locust/locustfile.py --host=http://gateway-service:8888 --web-host=0.0.0.0"
+    command: sh -c "pip install -r /locust/requirements.txt && locust -f /locust/locustfile.py --host=http://gateway-service:8888 --web-host=0.0.0.0 --html=/locust/report.html --logfile=/locust/locust.log"
     depends_on:
-      - gateway-service
-      - account-service
-      - customer-service
-      - authentication-service
+      gateway-service:
+        condition: service_healthy
+      account-service:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+      authentication-service:
+        condition: service_healthy
     networks:
       - bank-network
+    environment:
+      - LOCUST_STATS_HISTORY_ENABLED=true
 
 volumes:
   mysql-customer-data:

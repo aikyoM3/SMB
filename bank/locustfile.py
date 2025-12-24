@@ -1,6 +1,7 @@
 """
 Locust load testing file for Bank Management Application
 This file tests the microservices through the gateway service.
+Enhanced with percentile statistics tracking (median, 50th, 95th, 99th percentiles).
 """
 
 from locust import HttpUser, task, between, events
@@ -12,6 +13,40 @@ import jwt
 import base64
 
 logger = logging.getLogger("locustfile")
+
+# Event handler to log percentile statistics
+@events.test_start.add_listener
+def on_test_start(environment, **kwargs):
+    """Called when the test starts."""
+    logger.info("Starting load test with percentile statistics tracking")
+    logger.info("Locust UI will display: Median (50th), 95th, and 99th percentiles in the Statistics table and charts")
+
+@events.test_stop.add_listener
+def on_test_stop(environment, **kwargs):
+    """Called when the test stops. Print final percentile statistics."""
+    logger.info("=" * 80)
+    logger.info("Test stopped. Final percentile statistics:")
+    logger.info("=" * 80)
+    
+    # Print percentile statistics for all endpoints
+    # Locust UI automatically displays these in the Statistics table and charts
+    for name, entry in sorted(environment.stats.entries.items()):
+        if entry.num_requests > 0:
+            logger.info(f"\n{name}:")
+            logger.info(f"  Total Requests: {entry.num_requests}")
+            logger.info(f"  Failures: {entry.num_failures}")
+            logger.info(f"  Median (50th percentile): {entry.median_response_time}ms")
+            # Get percentiles using the correct API
+            percentiles = entry.get_response_time_percentile(0.50), entry.get_response_time_percentile(0.95), entry.get_response_time_percentile(0.99)
+            logger.info(f"  50th percentile: {percentiles[0]}ms")
+            logger.info(f"  95th percentile: {percentiles[1]}ms")
+            logger.info(f"  99th percentile: {percentiles[2]}ms")
+            logger.info(f"  Average: {entry.avg_response_time}ms")
+            logger.info(f"  Min: {entry.min_response_time}ms")
+            logger.info(f"  Max: {entry.max_response_time}ms")
+    logger.info("=" * 80)
+    logger.info("Note: The Locust web UI (http://localhost:8089) displays these statistics")
+    logger.info("      in real-time with graphs showing median, 50th, 95th, and 99th percentiles")
 
 # JWT secret key (must match the one in application.properties)
 JWT_SECRET = "AaZzBbCcYyDdXxEeWwFf"
