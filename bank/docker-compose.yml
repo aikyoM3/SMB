@@ -89,7 +89,8 @@ services:
     image: discovery-service
     container_name: discovery-service
     build:
-      context: ./discovery-service
+      context: .
+      dockerfile: ./discovery-service/Dockerfile
     ports:
       - "8761:8761"
     depends_on:
@@ -109,7 +110,8 @@ services:
     image: gateway-service
     container_name: gateway-service
     build:
-      context: ./gateway-service
+      context: .
+      dockerfile: ./gateway-service/Dockerfile
     ports:
       - "8888:8888"
     environment:
@@ -132,7 +134,8 @@ services:
     image: notification-service
     container_name: notification-service
     build:
-      context: ./notification-service
+      context: .
+      dockerfile: ./notification-service/Dockerfile
     ports:
       - "8887:8887"
     environment:
@@ -161,7 +164,8 @@ services:
     image: authentication-service
     container_name: authentication-service
     build:
-      context: ./authentication-service
+      context: .
+      dockerfile: ./authentication-service/Dockerfile
     ports:
       - "8885:8885"
     environment:
@@ -194,7 +198,8 @@ services:
     image: customer-service
     container_name: customer-service
     build:
-      context: ./customer-service
+      context: .
+      dockerfile: ./customer-service/Dockerfile
     ports:
       - "8886:8886"
     environment:
@@ -230,7 +235,8 @@ services:
     image: account-service
     container_name: account-service
     build:
-      context: ./account-service
+      context: .
+      dockerfile: ./account-service/Dockerfile
     ports:
       - "8884:8884"
     environment:
